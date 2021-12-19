@@ -52,4 +52,5 @@ float        minirocket_row2time(mrocket_t *r,   unsigned long row);
 mrocket_t *  minirocket_read_from_file(const char *filename);
 bool         minirocket_write_to_file(mrocket_t *r, const char *filename);
 bool         minirocket_tick(mrocket_t *rocket);
+mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name);
 #endif
