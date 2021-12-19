@@ -114,7 +114,7 @@ static void minirocket_socket_send_set_row(mrocket_t *rocket, unsigned long row)
 static bool _minirocket_socket_send_get_track(mrocket_t *rocket, const char *name) 
 {
   if(rocket->sock <= 0) {
-    return;
+    return false;
   }
   unsigned int len = strlen(name);
   const char head[5] = {CMD_GET_TRACK, 
@@ -176,6 +176,7 @@ mrocket_t *mrocket_read_from_file(const char *filename)
   while((fgets(buf, 256, fd) != NULL)) {
     if(buf[0] == '#') { // track name
       track = malloc(sizeof(mrocket_track_t));
+      track->rocket = rocket;
       track->numkeys = 0;
       track->id = rocket->numtracks;
       track->name = strdup(buf+1);
@@ -194,9 +195,11 @@ mrocket_t *mrocket_read_from_file(const char *filename)
       key->value = (float)atof(vb);
       vb = b;
       while(isalnum(*b++)) {} *(b-1)=0;
-      key->interp = (unsigned char)atoi(vb);
+      key->interp = (unsigned char)b[0]-'0';
 
-      // fprintf(stderr, "%d %.4f %d\n", key->row, key->value, key->interp); fflush(stderr);
+      _minirocket_sort_keys(track);
+
+      //fprintf(stderr, "READ: %d %.4f %d: %s\n", key->row, key->value, key->interp, b); fflush(stderr);
     }
   }
   return rocket;
@@ -227,7 +230,7 @@ bool mrocket_write_to_file(mrocket_t *rocket, const char *filename)
 static int _mrocket_track_sort_compare(const void *a, const void *b) {
   mrocket_key_t *k1 = (mrocket_key_t *)a;
   mrocket_key_t *k2 = (mrocket_key_t *)b;
-  return k2->row - k1->row;
+  return k1->row - k2->row;
 }
 
 void _minirocket_sort_keys(mrocket_track_t *track) {
@@ -283,10 +286,10 @@ void minirocket_set_key(mrocket_t *rocket,
   _minirocket_sort_keys(track);
 }
 
-mrocket_track_t *minirocket_create_track(mrocket_t *rocket, const char *name) 
+mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name) 
 {
   for(int i=0; i < rocket->numtracks; i++) {
-    if(strcmp(name, rocket->tracks[i]->name) == 0) {
+    if(strcmp(name, rocket->tracks[i]->name)) {
       return rocket->tracks[i];
     }
   }
@@ -301,12 +304,74 @@ mrocket_track_t *minirocket_create_track(mrocket_t *rocket, const char *name)
   track->name = strdup(name);
   track->numkeys = 0;
   track->id = rocket->numtracks;
+  track->rocket = rocket;
   rocket->tracks[rocket->numtracks++] = track;
   return track;
 }
 
+// TODO: Binary search
+static int find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned int row)
+{
+  /*
+  var lo = 0, hi = keys.length;
+        while (lo < hi) {
+            var mi = ((hi + lo) / 2) | 0;
+
+            if (keys[mi] < row) {
+                lo = mi + 1;
+            } else if (keys[mi] > row) {
+                hi = mi;
+            } else {
+                return mi;
+            }
+        }
+        return lo - 1;
+*/
+  return 0;
+}
+
+float mrocket_get_value(mrocket_track_t *track) 
+{
+  unsigned int row = minirocket_time2row(track->rocket, track->rocket->time);
+  // Find index
+  unsigned int index=-1;
+  for(unsigned int i=0; i < track->numkeys; i++) {
+    if(track->keys[i].row >= row) {
+      index=i;
+      break;
+    }
+  }
+  index--;
+
+  if(index < 0) {
+    return track->keys[0].value;
+  }
+
+  if(index > track->numkeys - 2) {
+    return track->keys[track->numkeys-1].value;
+  }
+  
+  unsigned int k0 = track->keys[index].row;
+  unsigned int k1 = track->keys[index+1].row;
+  float t = ((float)row - (float)k0) / ((float)k1 - (float)k0);
+  float a = track->keys[index].value;
+  float b = track->keys[index+1].value;
+  switch(track->keys[index].interp) {
+  case 0:
+    return a;
+  case 1:
+    return a + (b - a) * t;
+  case 2:
+    return a + (b - a) * t * t * (3 - 2 * t);
+  case 3:
+    return a + (b - a) * pow(t, 2.0);
+  default:
+    assert(false);
+  }
+}
 
 bool minirocket_tick(mrocket_t *rocket, float dTime) {
+  bool new_row = false;
 
   if(!rocket->paused) {
     rocket->time += dTime;
@@ -314,24 +379,25 @@ bool minirocket_tick(mrocket_t *rocket, float dTime) {
     int nrow = minirocket_time2row(rocket, rocket->time);
     if(nrow != rocket->row) {
       rocket->row = nrow;
+      new_row = true;
 #ifndef MR_NO_NETWORK
       minirocket_socket_send_set_row(rocket, rocket->row);
 #endif
-      fprintf(stderr, "row: %d\n", rocket->row); fflush(stderr);
+      //      fprintf(stderr, "row: %ld\n", rocket->row); fflush(stderr);
     }
   } else {
     rocket->time = minirocket_row2time(rocket, rocket->row);
   }
 
   if(rocket->sock <= 0) {
-    return true;
+    return new_row;
   }
 
 
 #ifndef MR_NO_NETWORK
   int r = _minirocket_socket_ringbuf_read(rocket);
   if(r == -1) {
-    return false;
+    return new_row;
   }
   ringbuf_t *buf = rocket->buf;
     
@@ -343,8 +409,7 @@ bool minirocket_tick(mrocket_t *rocket, float dTime) {
   }
   else if(rocket->handshake == 0) {
     rocket->handshake = -1;
-    fprintf(stderr, "Handshake done~\n"); fflush(stderr);
-    //    minirocket_create_track(rocket, "mygroup:mytrack");
+    fprintf(stderr, "minirocket: Handshake done~\n"); fflush(stderr);
   }
 
   if(ringbuf_size(buf) > 1) {
@@ -368,6 +433,8 @@ bool minirocket_tick(mrocket_t *rocket, float dTime) {
 	unsigned long row = ringbuf_read_long(buf);
 	float value = ringbuf_read_float(buf);
 	unsigned char interp = ringbuf_read_byte(buf);
+	//	fprintf(stderr, "set_key track/row/val/int %ld/%ld/%f/%ld\n", track, row, value, interp); fflush(stderr);
+
 	minirocket_set_key(rocket, track, row, value, interp);
       }
     }
@@ -392,7 +459,7 @@ bool minirocket_tick(mrocket_t *rocket, float dTime) {
   }
 #endif
 
-  return true;
+  return new_row;
 }
 
 static float timedifference_msec(struct timeval t0, struct timeval t1)
@@ -429,7 +496,6 @@ int main(int argc, char *argv[]) {
   rocket->rows_per_beat = 8;
 
 
-
   struct timeval t0;
   struct timeval t1;
   float prev_time = 0;
@@ -437,14 +503,20 @@ int main(int argc, char *argv[]) {
   rocket->time = 0;
   gettimeofday(&t0, NULL);
 
+  mrocket_track_t *track1 = minirocket_create_track(rocket, "mygroup:mytrack");
+  assert(track1 != NULL);
+
   while(1) {
     gettimeofday(&t1, NULL);
 
     float current_time = timedifference_msec(t0, t1);
-
-    minirocket_tick(rocket, current_time - prev_time);
-
+    float delta_time = current_time - prev_time;
     prev_time = current_time;
+
+    if(minirocket_tick(rocket, delta_time)) {
+      float t1val = mrocket_get_value(track1);
+      fprintf(stderr, "%.2f: %d: %.2f\n", rocket->time, rocket->row, t1val); fflush(stderr);
+    }
   }
 
   return 0;
