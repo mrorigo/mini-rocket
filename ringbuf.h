@@ -100,4 +100,18 @@ void ringbuf_read(ringbuf_t *r, unsigned char *buf, unsigned int size) {
 void ringbuf_free(ringbuf_t *r) {
   free(r);
 }
+
+#else
+ringbuf_t	*ringbuf_create(unsigned int max);
+void		 ringbuf_reset(ringbuf_t *r);
+unsigned int	 ringbuf_size(ringbuf_t *r);
+void		 ringbuf_write_byte(ringbuf_t *r, unsigned char c);
+void		 ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size);
+unsigned char	 ringbuf_peek(ringbuf_t *r);
+void		 ringbuf_skip(ringbuf_t *r, unsigned int n);
+unsigned char	 ringbuf_read_byte(ringbuf_t *r);
+unsigned long	 ringbuf_read_long(ringbuf_t *r);
+unsigned long	 ringbuf_read_float(ringbuf_t *r);
+void		 ringbuf_free(ringbuf_t *r);
+
 #endif

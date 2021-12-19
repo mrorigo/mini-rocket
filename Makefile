@@ -1,14 +1,13 @@
 LD=gcc
 CC=gcc
-CFLAGS=-O2 -ggdb -Wall -Wpedantic
-
+CFLAGS=-O0 -ggdb -Wall -Wpedantic
 LIBS=-lm -lws2_32
 
-mini-rocket.exe: mini-rocket.o
-	$(LD) $(LDFLAGS) -o $@ $<  $(LIBS)
+example.exe: example.o mini-rocket.o
+	$(LD) $(LDFLAGS) -o $@ $<  mini-rocket.o $(LIBS)
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean: 
-	rm -f mini-rocket.exe mini-rocket.o
+	rm -f example.exe mini-rocket.o
