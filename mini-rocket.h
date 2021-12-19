@@ -51,5 +51,5 @@ unsigned int minirocket_time2row(mrocket_t *r,   float time);
 float        minirocket_row2time(mrocket_t *r,   unsigned long row);
 mrocket_t *  mrocket_read_from_file(const char *filename);
 bool         mrocket_write_to_file(mrocket_t *r, const char *filename);
-bool         minirocket_tick(mrocket_t *rocket, float dTime);
+bool         minirocket_tick(mrocket_t *rocket);
 #endif

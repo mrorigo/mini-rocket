@@ -377,11 +377,10 @@ float mrocket_get_value(mrocket_track_t *track)
   }
 }
 
-bool minirocket_tick(mrocket_t *rocket, float dTime) {
+bool minirocket_tick(mrocket_t *rocket) {
   bool new_row = false;
 
   if(!rocket->paused) {
-    rocket->time += dTime;
 
     int nrow = minirocket_time2row(rocket, rocket->time);
     if(nrow != rocket->row) {

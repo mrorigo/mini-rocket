@@ -59,7 +59,8 @@ int main(int argc, char *argv[]) {
     float current_time = timedifference_msec(t0, t1);
     float delta_time = current_time - prev_time;
     if(isfinite(delta_time)) {
-      if(minirocket_tick(rocket, delta_time)) {
+      rocket->time += delta_time;
+      if(minirocket_tick(rocket)) {
 	float t1val = mrocket_get_value(track1);
 	fprintf(stderr, "EXAMPLE: delta_time=%f  rocket->time=%f\n", delta_time, rocket->time); fflush(stderr);
       }
