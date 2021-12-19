@@ -1,5 +1,6 @@
 LD=gcc
 CC=gcc
+CFLAGS=-O2 -ggdb -Wall -Wpedantic
 
 LIBS=-lm -lws2_32
 

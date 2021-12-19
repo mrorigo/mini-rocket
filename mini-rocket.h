@@ -9,14 +9,7 @@
 #define MR_MAX_TRACKS 64
 #define MR_MAX_KEYS 64
 
-enum Commands {
-  CMD_SET_KEY	  = 0,
-  CMD_DELETE_KEY  = 1,
-  CMD_GET_TRACK	  = 2,
-  CMD_SET_ROW	  = 3,
-  CMD_PAUSE	  = 4,
-  CMD_SAVE_TRACKS = 5
-};
+enum {CMD_SET_KEY, CMD_DELETE_KEY, CMD_GET_TRACK, CMD_SET_ROW, CMD_PAUSE, CMD_SAVE_TRACKS};
 
 typedef struct __mrocket_key {
   unsigned int	row;
@@ -41,7 +34,9 @@ typedef struct __mrocket_t {
   float           time;  // matches row via time2row
   unsigned int	  numtracks;
   mrocket_track_t *tracks[MR_MAX_TRACKS];
+#ifndef MR_NO_NETWORK
   ringbuf_t	  *buf;
+#endif
 } mrocket_t;
 
 
@@ -49,7 +44,7 @@ typedef struct __mrocket_t {
 mrocket_t *minirocket_connect(const char *hostname, int port);
 void       minirocket_disconnect(mrocket_t *r);
 #endif
-int        minirocket_time2row(mrocket_t *rocket, float time);
-float      minirocket_row2time(mrocket_t *rocket, unsigned long row);
-
+int        minirocket_time2row(mrocket_t *r,   float time);
+float      minirocket_row2time(mrocket_t *r,   unsigned long row);
+bool       mrocket_write_to_file(mrocket_t *r, const char *filename);
 #endif
