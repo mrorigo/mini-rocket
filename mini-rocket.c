@@ -440,7 +440,7 @@ bool minirocket_tick(mrocket_t *rocket) {
 	unsigned long row = ringbuf_read_long(buf);
 	float value = ringbuf_read_float(buf);
 	unsigned char interp = ringbuf_read_byte(buf);
-	//fprintf(stderr, "set_key track/row/val/int %ld/%ld/%f/%d\n", track, row, value, interp); fflush(stderr);
+	// fprintf(stderr, "set_key track/row/val/int %ld/%ld/%f/%d\n", track, row, value, interp); fflush(stderr);
 
 	minirocket_set_key(rocket, track, row, value, interp);
       }

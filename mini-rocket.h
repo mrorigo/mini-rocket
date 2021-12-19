@@ -44,13 +44,14 @@ typedef struct __mrocket_t {
 
 
 #ifndef MR_NO_NETWORK
-mrocket_t *minirocket_connect(const char *hostname, int port);
-void       minirocket_disconnect(mrocket_t *r);
+mrocket_t		*minirocket_connect(const char *hostname, int port);
+void			 minirocket_disconnect(mrocket_t *r);
 #endif
-unsigned int minirocket_time2row(mrocket_t *r,   float time);
-float        minirocket_row2time(mrocket_t *r,   unsigned long row);
-mrocket_t *  minirocket_read_from_file(const char *filename);
-bool         minirocket_write_to_file(mrocket_t *r, const char *filename);
-bool         minirocket_tick(mrocket_t *rocket);
-mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name);
+unsigned int		 minirocket_time2row(mrocket_t *r,   float time);
+float			 minirocket_row2time(mrocket_t *r,   unsigned long row);
+mrocket_t *		 minirocket_read_from_file(const char *filename);
+bool			 minirocket_write_to_file(mrocket_t *r, const char *filename);
+bool			 minirocket_tick(mrocket_t *rocket);
+mrocket_track_t *	 minirocket_create_track(mrocket_t *rocket, const char *name);
+float			 mrocket_get_value(mrocket_track_t *track);
 #endif
