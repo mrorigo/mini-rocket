@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 
   if(argc < 3) {
     fprintf(stderr, "Reading from file: %s\n", argv[1]);
-    rocket = mrocket_read_from_file(argv[1]);
+    rocket = minirocket_read_from_file(argv[1]);
     rocket->paused = false;
   }
 #ifndef MR_NO_NETWORK

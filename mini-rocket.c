@@ -178,7 +178,7 @@ static void _minirocket_sort_keys(mrocket_track_t *track) {
   qsort(track->keys, track->numkeys, sizeof(mrocket_key_t), _mrocket_track_sort_compare);
 }
 
-mrocket_t *mrocket_read_from_file(const char *filename) 
+mrocket_t *minirocket_read_from_file(const char *filename) 
 {
   FILE *fd = fopen(filename, "r");
   if(fd == NULL) {
@@ -217,7 +217,7 @@ mrocket_t *mrocket_read_from_file(const char *filename)
   return rocket;
 }
 
-bool mrocket_write_to_file(mrocket_t *rocket, const char *filename) 
+bool minirocket_write_to_file(mrocket_t *rocket, const char *filename) 
 {
   FILE *fd = fopen(filename, "w");
   if(fd == NULL) {
@@ -241,9 +241,9 @@ bool mrocket_write_to_file(mrocket_t *rocket, const char *filename)
 
 
 
-void minirocket_delete_key(mrocket_t *rocket, 
-			   unsigned int track_no, 
-			   unsigned int row) {
+static void minirocket_delete_key(mrocket_t *rocket, 
+				  unsigned int track_no, 
+				  unsigned int row) {
 
   assert(track_no <= rocket->numtracks);
   mrocket_track_t *track = rocket->tracks[track_no];
@@ -263,11 +263,11 @@ void minirocket_delete_key(mrocket_t *rocket,
   assert(false);
 }
 
-void minirocket_set_key(mrocket_t *rocket, 
-			unsigned int track_no, 
-			unsigned int row, 
-			float value, 
-			unsigned char interp) 
+static void minirocket_set_key(mrocket_t *rocket, 
+			       unsigned int track_no, 
+			       unsigned int row, 
+			       float value, 
+			       unsigned char interp) 
 {
   assert(track_no <= rocket->numtracks);
   assert((int)row >= 0);
@@ -456,7 +456,7 @@ bool minirocket_tick(mrocket_t *rocket) {
     else if(peek == CMD_SAVE_TRACKS) {
       ringbuf_skip(buf, 1);
       fprintf(stderr, "saving to file demo.rkt!\n"); fflush(stderr);
-      mrocket_write_to_file(rocket, "demo.rkt");
+      minirocket_write_to_file(rocket, "demo.rkt");
       fprintf(stderr, "saved to file!\n"); fflush(stderr);
     }
     else {
