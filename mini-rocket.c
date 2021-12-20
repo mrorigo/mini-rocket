@@ -29,11 +29,16 @@ float minirocket_row2time(mrocket_t *rocket, unsigned long row)
   return newtime * 1000.0f + 0.5f;
 }
 
-unsigned int minirocket_time2row(mrocket_t *rocket, float time) 
+float minirocket_time2rowf(mrocket_t *rocket, float time) 
 {
   const float rps = rocket->bpm / 60.0f * rocket->rows_per_beat;
   const float row = rps * ((float)time) * 1.0f / 1000.0f;
-  return (unsigned int)(floor(row));
+  return row;
+}
+
+unsigned int minirocket_time2row(mrocket_t *rocket, float time) 
+{
+  return (unsigned int)(floor(minirocket_time2rowf(rocket, time)));
 }
 
 mrocket_t *mrocket_init() {
@@ -335,8 +340,8 @@ static int _find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned i
 
 float mrocket_get_value(mrocket_track_t *track) 
 {
-  unsigned int row = minirocket_time2row(track->rocket, track->rocket->time);
-
+  unsigned int rowf = minirocket_time2rowf(track->rocket, track->rocket->time);
+  unsigned int row = (unsigned int)floor(rowf);
   int index = _find_key_index(track->keys, track->numkeys, row);
 
   if(index < 0) {
@@ -349,7 +354,7 @@ float mrocket_get_value(mrocket_track_t *track)
   
   unsigned int k0 = track->keys[index].row;
   unsigned int k1 = track->keys[index+1].row;
-  float t = ((float)row - (float)k0) / ((float)k1 - (float)k0);
+  float t = (rowf - (float)k0) / ((float)k1 - (float)k0);
   float a = track->keys[index].value;
   float b = track->keys[index+1].value;
   switch(track->keys[index].interp) {
