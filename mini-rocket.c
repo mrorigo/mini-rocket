@@ -316,39 +316,28 @@ mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name)
 }
 
 // TODO: Binary search
-static int find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned int row)
+static int _find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned int row)
 {
-  /*
-  var lo = 0, hi = keys.length;
-        while (lo < hi) {
-            var mi = ((hi + lo) / 2) | 0;
+  int lo = 0, hi = numkeys;
+  while (lo < hi) {
+    unsigned int mi = ((hi + lo) >> 1);
 
-            if (keys[mi] < row) {
-                lo = mi + 1;
-            } else if (keys[mi] > row) {
-                hi = mi;
-            } else {
-                return mi;
-            }
-        }
-        return lo - 1;
-*/
-  return 0;
+    if (keys[mi].row < row) {
+      lo = mi + 1;
+    } else if (keys[mi].row > row) {
+      hi = mi;
+    } else {
+      return mi;
+    }
+  }
+  return lo - 1;
 }
 
 float mrocket_get_value(mrocket_track_t *track) 
 {
   unsigned int row = minirocket_time2row(track->rocket, track->rocket->time);
-  // Find index
-  int index=-1;
-  for(unsigned int i=0; i < track->numkeys; i++) {
-    if(track->keys[i].row >= row) {
-      index=i;
-      break;
-    }
-  }
-  index--;
-  // fprintf(stderr, "get_value: row=%d index=%ld\n", row, index); fflush(stderr);
+
+  int index = _find_key_index(track->keys, track->numkeys, row);
 
   if(index < 0) {
     return track->keys[0].value;

@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
       rocket->time += delta_time;
       if(minirocket_tick(rocket)) {
 	float t1val = mrocket_get_value(track1);
-	fprintf(stderr, "EXAMPLE: delta_time=%f  rocket->time=%f\n", delta_time, rocket->time); fflush(stderr);
+	fprintf(stderr, "EXAMPLE: delta_time=%f  rocket->time=%f   value=%f\n", delta_time, rocket->time, t1val); fflush(stderr);
       }
       prev_time = current_time;
     }
