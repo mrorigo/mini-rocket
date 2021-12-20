@@ -340,7 +340,7 @@ static int _find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned i
 
 float mrocket_get_value(mrocket_track_t *track) 
 {
-  unsigned int rowf = minirocket_time2rowf(track->rocket, track->rocket->time);
+  float rowf = minirocket_time2rowf(track->rocket, track->rocket->time);
   unsigned int row = (unsigned int)floor(rowf);
   int index = _find_key_index(track->keys, track->numkeys, row);
 
