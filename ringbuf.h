@@ -27,6 +27,11 @@ ringbuf_t *ringbuf_create(unsigned int max) {
   return r;
 }
 
+void ringbuf_free(ringbuf_t *r) {
+  free(r->buf);
+  free(r);
+}
+
 void ringbuf_reset(ringbuf_t *r) {
   r->read = r->write = 0;
 }
@@ -95,10 +100,6 @@ void ringbuf_read(ringbuf_t *r, unsigned char *buf, unsigned int size) {
   while(size-- > 0) {
     buf[i++] = ringbuf_read_byte(r);
   }
-}
-
-void ringbuf_free(ringbuf_t *r) {
-  free(r);
 }
 
 #else
