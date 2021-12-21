@@ -13,6 +13,8 @@
 #if defined(_WIN32)
 #include <Ws2tcpip.h>
 #include <winsock2.h>
+#else
+#include <netdb.h>
 #endif
 
 #include "mini-rocket.h"
