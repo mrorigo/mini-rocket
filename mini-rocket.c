@@ -110,6 +110,19 @@ void minirocket_disconnect(mrocket_t *r) {
   free(r);
 }
 
+void minirocket_socket_send_pause(mrocket_t *rocket, unsigned int pause)
+{
+  if(rocket->sock <= 0) {
+    return;
+  }
+  assert((int)row >= 0);
+  const char head[5] = {CMD_PAUSE, pause};
+
+  if (send(rocket->sock, head, 2, 0) == -1){
+    perror("minirocket_socket_send_pause");
+  }
+}
+
 void minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row)
 {
   if(rocket->sock <= 0) {
@@ -326,7 +339,6 @@ mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name)
   return track;
 }
 
-// TODO: Binary search
 static int _find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned int row)
 {
   int lo = 0, hi = numkeys;
@@ -416,7 +428,7 @@ bool minirocket_tick(mrocket_t *rocket) {
   }
   else if(rocket->handshake == 0) {
     rocket->handshake = -1;
-    fprintf(stderr, "minirocket: Handshake done~\n"); fflush(stderr);
+    //fprintf(stderr, "minirocket: Handshake done~\n"); fflush(stderr);
   }
 
   if(ringbuf_size(buf) > 1) {
@@ -430,7 +442,6 @@ bool minirocket_tick(mrocket_t *rocket) {
       if(ringbuf_size(buf) > sizeof(long)) {
 	ringbuf_skip(buf, 1);
 	rocket->row = ringbuf_read_long(buf);
-	//fprintf(stderr, "Row: %ld~\n", rocket->row); fflush(stderr);
       }
     }
     else if(peek == CMD_SET_KEY) {
@@ -440,7 +451,6 @@ bool minirocket_tick(mrocket_t *rocket) {
 	unsigned long row = ringbuf_read_long(buf);
 	float value = ringbuf_read_float(buf);
 	unsigned char interp = ringbuf_read_byte(buf);
-	// fprintf(stderr, "set_key track/row/val/int %ld/%ld/%f/%d\n", track, row, value, interp); fflush(stderr);
 
 	minirocket_set_key(rocket, track, row, value, interp);
       }
