@@ -110,7 +110,7 @@ void minirocket_disconnect(mrocket_t *r) {
   free(r);
 }
 
-static void minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row)
+void minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row)
 {
   if(rocket->sock <= 0) {
     return;
@@ -344,7 +344,7 @@ static int _find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned i
   return lo - 1;
 }
 
-float mrocket_get_value(mrocket_track_t *track) 
+float minirocket_get_value(mrocket_track_t *track) 
 {
   float rowf = minirocket_time2rowf(track->rocket, track->rocket->time);
   unsigned int row = (unsigned int)floor(rowf);

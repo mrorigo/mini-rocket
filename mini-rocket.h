@@ -53,5 +53,6 @@ mrocket_t *		 minirocket_read_from_file(const char *filename);
 bool			 minirocket_write_to_file(mrocket_t *r, const char *filename);
 bool			 minirocket_tick(mrocket_t *rocket);
 mrocket_track_t *	 minirocket_create_track(mrocket_t *rocket, const char *name);
-float			 mrocket_get_value(mrocket_track_t *track);
+float			 minirocket_get_value(mrocket_track_t *track);
+void                     minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row);
 #endif
