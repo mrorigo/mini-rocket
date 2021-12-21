@@ -302,7 +302,7 @@ static void minirocket_set_key(mrocket_t *rocket,
 mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name) 
 {
   for(int i=0; i < rocket->numtracks; i++) {
-    if(strcmp(name, rocket->tracks[i]->name)) {
+    if(strcmp(name, rocket->tracks[i]->name) == 0) {
       return rocket->tracks[i];
     }
   }
