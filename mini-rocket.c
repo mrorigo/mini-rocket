@@ -50,7 +50,9 @@ mrocket_t *mrocket_init() {
   }
   r->paused = true;
   r->numtracks = 0;
+#ifndef MR_NO_NETWORK
   r->sock = -1;
+#endif
   r->row = 0;
   r->time = 0;
   return r;
@@ -193,11 +195,13 @@ mrocket_t *minirocket_read_from_file(const char *filename)
     return NULL;
   }
   mrocket_t *rocket = mrocket_init();
-  char buf[256];
+
+  char buf[1000];
   mrocket_track_t *track = NULL;
-  while((fgets(buf, 256, fd) != NULL)) {
+  while((fgets(buf, 1000, fd) != NULL)) {
     if(buf[0] == '#') { // track name
       track = malloc(sizeof(mrocket_track_t));
+      memset(track, 0, sizeof(mrocket_track_t));
       track->rocket = rocket;
       track->numkeys = 0;
       track->id = rocket->numtracks;
