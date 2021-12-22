@@ -115,7 +115,6 @@ void minirocket_socket_send_pause(mrocket_t *rocket, unsigned int pause)
   if(rocket->sock <= 0) {
     return;
   }
-  assert((int)row >= 0);
   const char head[5] = {CMD_PAUSE, pause};
 
   if (send(rocket->sock, head, 2, 0) == -1){
