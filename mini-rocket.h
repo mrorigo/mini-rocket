@@ -38,6 +38,7 @@ typedef struct __mrocket_t {
 #ifndef MR_NO_NETWORK
   int		  sock;
   int		  handshake;
+  fd_set          fds;
   ringbuf_t	  *buf;
 #endif
 } mrocket_t;

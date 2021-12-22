@@ -97,8 +97,9 @@ mrocket_t *minirocket_connect(const char *hostname, int port) {
     perror("send hello");
     return NULL;//exit(5);
   }
-
-   return r;
+  FD_ZERO(&r->fds);
+  FD_SET(r->sock, &r->fds);
+  return r;
 }
 
 void minirocket_disconnect(mrocket_t *r) {
@@ -115,7 +116,7 @@ void minirocket_socket_send_pause(mrocket_t *rocket, unsigned int pause)
   if(rocket->sock <= 0) {
     return;
   }
-  const char head[5] = {CMD_PAUSE, pause};
+  const char head[2] = {CMD_PAUSE, pause};
 
   if (send(rocket->sock, head, 2, 0) == -1){
     perror("minirocket_socket_send_pause");
@@ -162,18 +163,22 @@ static bool _minirocket_socket_send_get_track(mrocket_t *rocket, const char *nam
 
 static int _minirocket_socket_ringbuf_read(mrocket_t *rocket) {
   struct timeval to = {0, 0};
-  fd_set fds;
 
-  FD_ZERO(&fds);
-  FD_SET(rocket->sock, &fds);
+  FD_SET(rocket->sock, &rocket->fds);
 
-  if(select((int)rocket->sock + 1, &fds, NULL, NULL, &to) <= 0) {
+  if(select((int)rocket->sock + 1, &rocket->fds, NULL, NULL, &to) <= 0) {
     return ringbuf_size(rocket->buf);
   }
 
   int numbytes;
+  /**
+   *   0 1 2 3 4 5 6 7 8 9
+   *                     w
+   *                   r
+   *
+   */
   unsigned int max = rocket->buf->max - rocket->buf->write;
-  
+  assert(max > 0);
   if ((numbytes=recv(rocket->sock, (char *)rocket->buf->buf+rocket->buf->write, max, 0x0)) == -1) {
     if(errno != EAGAIN && errno != 0) {
       perror("recv"); fflush(stderr);
