@@ -1,6 +1,6 @@
 LD=gcc
 CC=gcc
-CFLAGS=-O2 -ggdb -Wall -Wpedantic
+CFLAGS=-O2 -Wall -Wpedantic
 #ifeq ($(WINMODE),1)
 LIBS=-lm -lws2_32
 #else
