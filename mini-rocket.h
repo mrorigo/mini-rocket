@@ -2,6 +2,11 @@
 #define __MINIROCKET_H__
 
 #include <stdbool.h>
+#if defined(_WIN32)
+#include <winsock2.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "ringbuf.h"
 
