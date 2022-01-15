@@ -14,6 +14,7 @@ typedef struct __ringbuf_t {
   unsigned int write;
   unsigned int read;
   unsigned int max;
+  int size;
 } ringbuf_t;
 #endif
 
@@ -29,11 +30,11 @@ ringbuf_t *ringbuf_create(unsigned int max) {
 
 void ringbuf_print(ringbuf_t *r) {
   fprintf(stderr, "\n");
-  for(int i=0; i < r->max; i++) {
+  for(unsigned int i=0; i < r->max; i++) {
     fprintf(stderr, "%02x|", r->buf[i]);
   }
   fprintf(stderr, "\n");
-  for(int i=0; i < r->max; i++) {
+  for(unsigned int i=0; i < r->max; i++) {
     if(r->read == r->write) {
       fprintf(stderr, "%s|", i==r->read?"RW":"  ");
     } else {
@@ -56,35 +57,31 @@ void ringbuf_reset(ringbuf_t *r) {
 }
 
 unsigned int ringbuf_size(ringbuf_t *r) {
-  if(r->write < r->read) {
-    return r->max - r->read + r->write;
-  } else {
-    return r->write - r->read;
-  }
+  return r->size;
 }
 
 void ringbuf_write_byte(ringbuf_t *r, unsigned char c) {
   r->buf[r->write] = c;
   r->write = (r->write + 1) % r->max;
-  assert(r->write > r->read);
+  r->size++;
 }
 
 void ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size) {
   unsigned int i = 0;
-  assert(size < ringbuf_size(r));
+  assert(size <= r->max - ringbuf_size(r));
   while(size-- > 0) {
     ringbuf_write_byte(r, buf[i++]);
   }
 }
-
 
 unsigned char ringbuf_peek(ringbuf_t *r) {
   return r->buf[r->read];
 }
 
 void ringbuf_skip(ringbuf_t *r, unsigned int n) {
-  r->buf[r->read] = 0x42;
   r->read = (r->read + n) % r->max;
+  r->size -= n;
+  assert(r->size >= 0);
 }
 
 unsigned char ringbuf_read_byte(ringbuf_t *r) {
@@ -101,7 +98,6 @@ unsigned long ringbuf_read_long(ringbuf_t *r) {
     (ringbuf_read_byte(r) << 8) |
     (ringbuf_read_byte(r));
 }
-
 
 float ringbuf_read_float(ringbuf_t *r) {
   assert(ringbuf_size(r) >= sizeof(long));
@@ -134,5 +130,6 @@ unsigned char	 ringbuf_read_byte(ringbuf_t *r);
 unsigned long	 ringbuf_read_long(ringbuf_t *r);
 float	         ringbuf_read_float(ringbuf_t *r);
 void		 ringbuf_free(ringbuf_t *r);
+void             ringbuf_print(ringbuf_t *r);
 
 #endif

@@ -62,4 +62,5 @@ bool			 minirocket_write_to_file(mrocket_t *r, const char *filename);
 bool			 minirocket_tick(mrocket_t *rocket);
 mrocket_track_t *	 minirocket_create_track(mrocket_t *rocket, const char *name);
 float			 minirocket_get_value(mrocket_track_t *track);
+void                     minirocket_dump_to_file(mrocket_t *rocket, FILE *fd);
 #endif
