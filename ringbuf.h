@@ -43,7 +43,7 @@ void ringbuf_print(ringbuf_t *r) {
   }
   fprintf(stderr, "\n");
   fprintf(stderr, "\n");
-  fprintf(stderr, "R: %d  W:%d\n", r->read, r->write);
+  fprintf(stderr, "R: %d  W:%d  S:%d\n", r->read, r->write, r->size);
   fflush(stderr);
 }
 
@@ -79,6 +79,9 @@ unsigned char ringbuf_peek(ringbuf_t *r) {
 }
 
 void ringbuf_skip(ringbuf_t *r, unsigned int n) {
+  for(int i = 0; i < n; i++) {
+    r->buf[(r->read + i) % r->max] = 0x42;
+  }
   r->read = (r->read + n) % r->max;
   r->size -= n;
   assert(r->size >= 0);

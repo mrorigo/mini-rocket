@@ -72,7 +72,7 @@ mrocket_t *mrocket_init() {
 #ifndef MR_NO_NETWORK
 mrocket_t *minirocket_connect(const char *hostname, int port) {
   mrocket_t *r = mrocket_init();
-  r->buf = ringbuf_create(256);
+  r->buf = ringbuf_create(512);
   r->handshake = 12;
 
 #if __WIN32__
@@ -182,6 +182,7 @@ static int _minirocket_socket_ringbuf_read(mrocket_t *rocket, int max_bytes) {
     return ringbuf_size(rocket->buf);
   }
 
+  unsigned char buf[max_bytes];
   int numbytes;
   /**
    *   0 1 2 3 4 5 6 7 8 9
@@ -191,21 +192,21 @@ static int _minirocket_socket_ringbuf_read(mrocket_t *rocket, int max_bytes) {
    */
   int max = rocket->buf->max - rocket->buf->size;
   max = max > max_bytes ? max_bytes : max;
-
+  //  fprintf(stderr, "ringbuf_read max %d bytes\n", max);
+  
   if(max <= 0) {
     ringbuf_print(rocket->buf);
     return ringbuf_size(rocket->buf);
   }
   assert(max > 0);
-  if ((numbytes=recv(rocket->sock, (char *)rocket->buf->buf+rocket->buf->write, max, 0x0)) == -1) {
+  if ((numbytes=recv(rocket->sock, (char *)buf, max, 0x0)) == -1) {
     if(errno != EAGAIN && errno != 0) {
       perror("recv"); fflush(stderr);
       return -1;
     }
   }
   else if(numbytes > 0) {
-    rocket->buf->size += numbytes;
-    rocket->buf->write = (rocket->buf->write + numbytes) % rocket->buf->max;
+    ringbuf_write(rocket->buf, buf, numbytes);
   }
 
   return ringbuf_size(rocket->buf);
@@ -407,6 +408,7 @@ float minirocket_get_value(mrocket_track_t *track)
   case 3:
     return a + (b - a) * pow(t, 2.0);
   default:
+    fprintf(stderr, "minirocket_get_value for %s: index: %d  nkeys: %d   interp: %d\n", track->name, index, track->numkeys, track->keys[index].interp);
     assert(false);
   }
 }
@@ -435,7 +437,7 @@ bool minirocket_tick(mrocket_t *rocket) {
 
 
 #ifndef MR_NO_NETWORK
-  int r = _minirocket_socket_ringbuf_read(rocket, 13);  // largest single packet is 13 bytes
+  int r = _minirocket_socket_ringbuf_read(rocket, 32);  // largest single packet is 13 bytes
   if(r == -1) {
     return new_row;
   }
