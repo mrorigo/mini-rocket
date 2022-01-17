@@ -30,7 +30,7 @@ void minirocket_dump_to_file(mrocket_t *rocket, FILE *fd)
     fprintf(fd, "#%s\n", track->name);
     for(unsigned int j=0; j < track->numkeys; j++) {
       mrocket_key_t *key = &track->keys[j];
-      fprintf(fd, "%d %.4f %d\n", key->row, key->value, key->interp);
+      fprintf(fd, "%d %.6f %d\n", key->row, key->value, key->interp);
     }
   }
 }
