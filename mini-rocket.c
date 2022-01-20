@@ -243,6 +243,7 @@ mrocket_t *minirocket_read_from_file(const char *filename)
       track->numkeys = 0;
       track->id = rocket->numtracks;
       track->name = strdup(buf+1);
+      track->name[strlen(track->name)-1] = 0;
       rocket->tracks[rocket->numtracks++] = track;
     }
     else {

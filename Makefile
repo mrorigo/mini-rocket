@@ -1,7 +1,16 @@
 CFLAGS=-O2 -Wall -Wpedantic
 LIBS = -lm
 ifeq ($(OS),Windows_NT)
-    LIBS+= -lws2_32
+    LIBS += -lws2_32
+    CFLAGS += -D WINDOWS
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        CFLAGS += -D LINUX
+    endif
+    ifeq ($(UNAME_S),Darwin)
+        CFLAGS += -D OSX
+    endif
 endif
 LD=gcc
 CC=gcc
