@@ -23,6 +23,17 @@
 #include "ringbuf.h"
 #endif
 
+void minirocket_dump_to_file(mrocket_t *rocket, FILE *fd)
+{
+  for(unsigned int i=0; i < rocket->numtracks; i++) {
+    mrocket_track_t *track = rocket->tracks[i];
+    fprintf(fd, "#%s\n", track->name);
+    for(unsigned int j=0; j < track->numkeys; j++) {
+      mrocket_key_t *key = &track->keys[j];
+      fprintf(fd, "%d %.6f %d\n", key->row, key->value, key->interp);
+    }
+  }
+}
 
 float minirocket_row2time(mrocket_t *rocket, unsigned long row) 
 {
@@ -50,7 +61,9 @@ static mrocket_t *mrocket_init() {
   }
   r->paused = true;
   r->numtracks = 0;
+#ifndef MR_NO_NETWORK
   r->sock = -1;
+#endif
   r->row = 0;
   r->time = 0;
   return r;
@@ -59,7 +72,7 @@ static mrocket_t *mrocket_init() {
 #ifndef MR_NO_NETWORK
 mrocket_t *minirocket_connect(const char *hostname, int port) {
   mrocket_t *r = mrocket_init();
-  r->buf = ringbuf_create(256);
+  r->buf = ringbuf_create(512);
   r->handshake = 12;
 
 #if __WIN32__
@@ -95,8 +108,9 @@ mrocket_t *minirocket_connect(const char *hostname, int port) {
     perror("send hello");
     return NULL;//exit(5);
   }
-
-   return r;
+  FD_ZERO(&r->fds);
+  FD_SET(r->sock, &r->fds);
+  return r;
 }
 
 void minirocket_disconnect(mrocket_t *r) {
@@ -108,7 +122,19 @@ void minirocket_disconnect(mrocket_t *r) {
   free(r);
 }
 
-static void minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row)
+void minirocket_socket_send_pause(mrocket_t *rocket, unsigned int pause)
+{
+  if(rocket->sock <= 0) {
+    return;
+  }
+  const char head[2] = {CMD_PAUSE, pause};
+
+  if (send(rocket->sock, head, 2, 0) == -1){
+    perror("minirocket_socket_send_pause");
+  }
+}
+
+void minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row)
 {
   if(rocket->sock <= 0) {
     return;
@@ -126,6 +152,7 @@ static void minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row)
 static bool _minirocket_socket_send_get_track(mrocket_t *rocket, const char *name) 
 {
   if(rocket->sock <= 0) {
+    fprintf(stderr, "minirocket_socket_send_get_track: no socket"); fflush(stderr); fflush(stdout);
     return false;
   }
   unsigned int len = strlen(name);
@@ -133,12 +160,12 @@ static bool _minirocket_socket_send_get_track(mrocket_t *rocket, const char *nam
 			(len>>24)&0xff,  (len>>16)&0xff, (len>>8)&0xff, len&0xff};
 
   if (send(rocket->sock, head, 5, 0) == -1){
-    perror("minirocket_socket_send_get_track: send cmd");
+    perror("minirocket_socket_send_get_track: send cmd"); fflush(stderr); fflush(stdout);
     return false;
   }
 
   if (send(rocket->sock, name, len, 0) == -1){
-    perror("minirocket_socket_send_get_track: send name");
+    perror("minirocket_socket_send_get_track: send name"); fflush(stderr); fflush(stdout);
     return false;
   }
 
@@ -146,28 +173,40 @@ static bool _minirocket_socket_send_get_track(mrocket_t *rocket, const char *nam
 }
 
 
-static int _minirocket_socket_ringbuf_read(mrocket_t *rocket) {
+static int _minirocket_socket_ringbuf_read(mrocket_t *rocket, int max_bytes) {
   struct timeval to = {0, 0};
-  fd_set fds;
 
-  FD_ZERO(&fds);
-  FD_SET(rocket->sock, &fds);
+  FD_SET(rocket->sock, &rocket->fds);
 
-  if(select((int)rocket->sock + 1, &fds, NULL, NULL, &to) <= 0) {
+  if(select((int)rocket->sock + 1, &rocket->fds, NULL, NULL, &to) <= 0) {
     return ringbuf_size(rocket->buf);
   }
 
+  unsigned char buf[max_bytes];
   int numbytes;
-  unsigned int max = rocket->buf->max - rocket->buf->write;
+  /**
+   *   0 1 2 3 4 5 6 7 8 9
+   *                     w
+   *                   r
+   *
+   */
+  int max = rocket->buf->max - rocket->buf->size;
+  max = max > max_bytes ? max_bytes : max;
+  //  fprintf(stderr, "ringbuf_read max %d bytes\n", max);
   
-  if ((numbytes=recv(rocket->sock, (char *)rocket->buf->buf+rocket->buf->write, max, 0x0)) == -1) {
+  if(max <= 0) {
+    ringbuf_print(rocket->buf);
+    return ringbuf_size(rocket->buf);
+  }
+  assert(max > 0);
+  if ((numbytes=recv(rocket->sock, (char *)buf, max, 0x0)) == -1) {
     if(errno != EAGAIN && errno != 0) {
       perror("recv"); fflush(stderr);
       return -1;
     }
   }
   else if(numbytes > 0) {
-    rocket->buf->write = (rocket->buf->write + numbytes) % rocket->buf->max;
+    ringbuf_write(rocket->buf, buf, numbytes);
   }
 
   return ringbuf_size(rocket->buf);
@@ -193,11 +232,13 @@ mrocket_t *minirocket_read_from_file(const char *filename)
     return NULL;
   }
   mrocket_t *rocket = mrocket_init();
-  char buf[256];
+
+  char buf[512];
   mrocket_track_t *track = NULL;
-  while((fgets(buf, 256, fd) != NULL)) {
+  while((fgets(buf, 512, fd) != NULL)) {
     if(buf[0] == '#') { // track name
       track = malloc(sizeof(mrocket_track_t));
+      memset(track, 0, sizeof(mrocket_track_t));
       track->rocket = rocket;
       track->numkeys = 0;
       track->id = rocket->numtracks;
@@ -224,6 +265,7 @@ mrocket_t *minirocket_read_from_file(const char *filename)
   return rocket;
 }
 
+
 bool minirocket_write_to_file(mrocket_t *rocket, const char *filename) 
 {
   FILE *fd = fopen(filename, "w");
@@ -231,15 +273,7 @@ bool minirocket_write_to_file(mrocket_t *rocket, const char *filename)
     perror("fopen");
     return false;
   }
-
-  for(int i=0; i < rocket->numtracks; i++) {
-    mrocket_track_t *track = rocket->tracks[i];
-    fprintf(fd, "#%s\n", track->name);
-    for(int j=0; j < track->numkeys; j++) {
-      mrocket_key_t *key = &track->keys[j];
-      fprintf(fd, "%d %.4f %d\n", key->row, key->value, key->interp);
-    }
-  }
+  minirocket_dump_to_file(rocket, fd);
 
   fclose(fd);
   return true;
@@ -254,7 +288,7 @@ static void minirocket_delete_key(mrocket_t *rocket,
 
   assert(track_no <= rocket->numtracks);
   mrocket_track_t *track = rocket->tracks[track_no];
-  for(int i=0; i < track->numkeys; i++) {
+  for(unsigned int i=0; i < track->numkeys; i++) {
     mrocket_key_t *key = &track->keys[i];
     if(key->row == row) {
       // Delete this key
@@ -266,7 +300,7 @@ static void minirocket_delete_key(mrocket_t *rocket,
       return;
     }
   }
-  fprintf(stderr, "FAILED delete key: %d %d  numkeys:%d~\n", track_no, row, track->numkeys); fflush(stderr);
+  fprintf(stderr, "minirocket: FAILED delete key: %d %d  numkeys:%d~\n", track_no, row, track->numkeys); fflush(stderr);
   assert(false);
 }
 
@@ -276,11 +310,14 @@ static void minirocket_set_key(mrocket_t *rocket,
 			       float value, 
 			       unsigned char interp) 
 {
-  assert(track_no <= rocket->numtracks);
-  assert((int)row >= 0);
+  if(track_no >= rocket->numtracks) {
+    fprintf(stderr, "minirocket: track_no %d is not valid. max %d \n", track_no, rocket->numtracks);
+    return;
+  }
+
   mrocket_track_t *track = rocket->tracks[track_no];
 
-  for(int i=0; i < track->numkeys; i++) {
+  for(unsigned int i=0; i < track->numkeys; i++) {
     mrocket_key_t *key = &track->keys[i];
     if(key->row == row) {
       key->value = value;
@@ -301,14 +338,15 @@ static void minirocket_set_key(mrocket_t *rocket,
 
 mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name) 
 {
-  for(int i=0; i < rocket->numtracks; i++) {
-    if(strcmp(name, rocket->tracks[i]->name)) {
+  for(unsigned int i=0; i < rocket->numtracks; i++) {
+    if(strcmp(name, rocket->tracks[i]->name) == 0) {
       return rocket->tracks[i];
     }
   }
 
 #ifndef MR_NO_NETWORK
   if(!_minirocket_socket_send_get_track(rocket, name)) {
+    fprintf(stderr, "rocket ERROR: could not send GET_TRACK\n"); fflush(stderr);
     return NULL;
   }
 #endif
@@ -319,10 +357,10 @@ mrocket_track_t * minirocket_create_track(mrocket_t *rocket, const char *name)
   track->id = rocket->numtracks;
   track->rocket = rocket;
   rocket->tracks[rocket->numtracks++] = track;
+  // fprintf(stderr, "rocket: created track %s\n", name); fflush(stderr);
   return track;
 }
 
-// TODO: Binary search
 static int _find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned int row)
 {
   int lo = 0, hi = numkeys;
@@ -340,7 +378,7 @@ static int _find_key_index(mrocket_key_t *keys, unsigned int numkeys, unsigned i
   return lo - 1;
 }
 
-float mrocket_get_value(mrocket_track_t *track) 
+float minirocket_get_value(mrocket_track_t *track) 
 {
   float rowf = minirocket_time2rowf(track->rocket, track->rocket->time);
   unsigned int row = (unsigned int)floor(rowf);
@@ -350,7 +388,7 @@ float mrocket_get_value(mrocket_track_t *track)
     return track->keys[0].value;
   }
 
-  if(index > track->numkeys - 2) {
+  if((unsigned int)index > track->numkeys - 2) {
     return track->keys[track->numkeys-1].value;
   }
   
@@ -359,6 +397,7 @@ float mrocket_get_value(mrocket_track_t *track)
   float t = (rowf - (float)k0) / ((float)k1 - (float)k0);
   float a = track->keys[index].value;
   float b = track->keys[index+1].value;
+  //  fprintf(stderr, "index:%d: %f -> %f  %f  (%d)\n", index, a, b, t, track->keys[index].interp);  
   switch(track->keys[index].interp) {
   case 0:
     return a;
@@ -369,6 +408,7 @@ float mrocket_get_value(mrocket_track_t *track)
   case 3:
     return a + (b - a) * pow(t, 2.0);
   default:
+    fprintf(stderr, "minirocket_get_value for %s: index: %d  nkeys: %d   interp: %d\n", track->name, index, track->numkeys, track->keys[index].interp);
     assert(false);
   }
 }
@@ -378,7 +418,7 @@ bool minirocket_tick(mrocket_t *rocket) {
 
   if(!rocket->paused) {
 
-    int nrow = minirocket_time2row(rocket, rocket->time);
+    unsigned int nrow = minirocket_time2row(rocket, rocket->time);
     if(nrow != rocket->row) {
       // fprintf(stderr, "minirocket_tick: row: %d   new row: %d\n", rocket->row, nrow); fflush(stderr);
       rocket->row = nrow;
@@ -397,49 +437,62 @@ bool minirocket_tick(mrocket_t *rocket) {
 
 
 #ifndef MR_NO_NETWORK
-  int r = _minirocket_socket_ringbuf_read(rocket);
+  int r = _minirocket_socket_ringbuf_read(rocket, 32);  // largest single packet is 13 bytes
   if(r == -1) {
     return new_row;
   }
   ringbuf_t *buf = rocket->buf;
-
+  /* if(r != 0) { */
+  /*   fprintf(stderr, "ringbuf read %d bytes\n", r); */
+  /* } */
   if(rocket->handshake > 0) {
     int skip = r > rocket->handshake ? rocket->handshake : r;
-    rocket->handshake -= skip; // must become 0 once
-    //fprintf(stderr, "Handshake %d\n", rocket->handshake); fflush(stderr);
-    ringbuf_skip(buf, skip);
+    if(skip > 0) {
+      rocket->handshake -= skip; // must become 0 once
+      //fprintf(stderr, "Handshake %d\n", rocket->handshake); fflush(stderr);
+      //ringbuf_print(buf);
+      ringbuf_skip(buf, skip);
+    }
     return false;
   }
   else if(rocket->handshake == 0) {
     rocket->handshake = -1;
-    // fprintf(stderr, "minirocket: Handshake done~\n"); fflush(stderr);
+    //fprintf(stderr, "minirocket: Handshake done~\n"); fflush(stderr);
+    //ringbuf_print(buf);
   }
 
-  if(ringbuf_size(buf) > 1) {
+  else if(ringbuf_size(buf) > 1) {
     unsigned char peek = ringbuf_peek(buf);
     if(peek == CMD_PAUSE) {
       ringbuf_skip(buf, 1);
       rocket->paused = ringbuf_read_byte(buf) == 1;
-      fprintf(stderr, "Pause: %s~\n", rocket->paused?"Y":"N"); fflush(stderr);
+      //      fprintf(stderr, "Pause: %s~\n", rocket->paused?"Y":"N"); fflush(stderr);
     }
     else if(peek == CMD_SET_ROW) { 
       if(ringbuf_size(buf) > sizeof(long)) {
 	ringbuf_skip(buf, 1);
 	rocket->row = ringbuf_read_long(buf);
-	//fprintf(stderr, "Row: %ld~\n", rocket->row); fflush(stderr);
+      } else {
+	// fprintf(stderr, "peek: %02x, waiting> %d\n", peek, ringbuf_size(buf)); fflush(stderr);
       }
     }
     else if(peek == CMD_SET_KEY) {
       if(ringbuf_size(buf) > sizeof(long)*3+1) {
+
+	//	fprintf(stderr, "rb when SET_KEY"); fflush(stderr);
+	//	ringbuf_print(buf);
+
 	ringbuf_skip(buf, 1);
 	unsigned long track = ringbuf_read_long(buf);
 	unsigned long row = ringbuf_read_long(buf);
 	float value = ringbuf_read_float(buf);
 	unsigned char interp = ringbuf_read_byte(buf);
-	// fprintf(stderr, "set_key track/row/val/int %ld/%ld/%f/%d\n", track, row, value, interp); fflush(stderr);
 
 	minirocket_set_key(rocket, track, row, value, interp);
       }
+      else {
+	// fprintf(stderr, "peek: %02x, waiting for 13> %d\n", peek, ringbuf_size(buf)); fflush(stderr);
+      }    
     }
     else if(peek == CMD_DELETE_KEY) {
       if(ringbuf_size(buf) > sizeof(long)*2+1) {
@@ -456,7 +509,12 @@ bool minirocket_tick(mrocket_t *rocket) {
       fprintf(stderr, "minirocket: saved to file!\n"); fflush(stderr);
     }
     else {
+<<<<<<< HEAD
       fprintf(stderr, "minirocket: protocol error: %d\n", peek); fflush(stderr);
+=======
+      fprintf(stderr, "protocol error: %d\n", peek); fflush(stderr);
+      ringbuf_print(buf);
+>>>>>>> a700a0f7193850c0b30e256922f16c846a5f0670
       ringbuf_skip(buf, 1);
     }
   }

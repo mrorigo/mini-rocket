@@ -14,6 +14,7 @@ typedef struct __ringbuf_t {
   unsigned int write;
   unsigned int read;
   unsigned int max;
+  int size;
 } ringbuf_t;
 #endif
 
@@ -22,7 +23,7 @@ static ringbuf_t *ringbuf_create(unsigned int max) {
   ringbuf_t *r = malloc(sizeof(ringbuf_t));
   memset(r, 0, sizeof(ringbuf_t));
   r->buf = malloc(max);
-  memset(r->buf, 0, max);
+  memset(r->buf, 0x41, max);
   r->max = max;
   return r;
 }
@@ -37,36 +38,72 @@ static inline unsigned int ringbuf_size(ringbuf_t *r) {
   } else {
     return r->write - r->read;
   }
+
+  void ringbuf_print(ringbuf_t *r) {
+  fprintf(stderr, "\n");
+  for(unsigned int i=0; i < r->max; i++) {
+    fprintf(stderr, "%02x|", r->buf[i]);
+  }
+  fprintf(stderr, "\n");
+  for(unsigned int i=0; i < r->max; i++) {
+    if(r->read == r->write) {
+      fprintf(stderr, "%s|", i==r->read?"RW":"  ");
+    } else {
+      fprintf(stderr, "%s|", i==r->read?"R^":(i==r->write?"W^":"  "));
+    }
+  }
+  fprintf(stderr, "\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "R: %d  W:%d  S:%d\n", r->read, r->write, r->size);
+  fflush(stderr);
+}
+
+void ringbuf_free(ringbuf_t *r) {
+  free(r->buf);
+  free(r);
+}
+
+void ringbuf_reset(ringbuf_t *r) {
+  r->read = r->write = 0;
+}
+
+unsigned int ringbuf_size(ringbuf_t *r) {
+  return r->size;
+>>>>>>> a700a0f7193850c0b30e256922f16c846a5f0670
 }
 
 void ringbuf_write_byte(ringbuf_t *r, unsigned char c) {
   r->buf[r->write] = c;
   r->write = (r->write + 1) % r->max;
-  assert(r->write > r->read);
+  r->size++;
 }
 
 void ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size) {
   unsigned int i = 0;
-  assert(size < ringbuf_size(r));
+  assert(size <= r->max - ringbuf_size(r));
   while(size-- > 0) {
     ringbuf_write_byte(r, buf[i++]);
   }
 }
-
 
 unsigned char ringbuf_peek(ringbuf_t *r) {
   return r->buf[r->read];
 }
 
 void ringbuf_skip(ringbuf_t *r, unsigned int n) {
+  for(int i = 0; i < n; i++) {
+    r->buf[(r->read + i) % r->max] = 0x42;
+  }
   r->read = (r->read + n) % r->max;
+  r->size -= n;
+  assert(r->size >= 0);
 }
 
 unsigned char ringbuf_read_byte(ringbuf_t *r) {
   assert(ringbuf_size(r) >= 1);
-  const int pos = r->read;
+  unsigned char ret = r->buf[r->read];
   ringbuf_skip(r, 1);
-  return r->buf[pos];
+  return ret;
 }
 
 unsigned long ringbuf_read_long(ringbuf_t *r) {
@@ -77,8 +114,7 @@ unsigned long ringbuf_read_long(ringbuf_t *r) {
     (ringbuf_read_byte(r));
 }
 
-
-unsigned long ringbuf_read_float(ringbuf_t *r) {
+float ringbuf_read_float(ringbuf_t *r) {
   assert(ringbuf_size(r) >= sizeof(long));
   float value = 0;
   unsigned char *v = (unsigned char *)&value;
@@ -97,10 +133,6 @@ void ringbuf_read(ringbuf_t *r, unsigned char *buf, unsigned int size) {
   }
 }
 
-void ringbuf_free(ringbuf_t *r) {
-  free(r);
-}
-
 #else
 static ringbuf_t	*ringbuf_create(unsigned int max);
 static void		 ringbuf_reset(ringbuf_t *r);
@@ -111,7 +143,8 @@ unsigned char	 ringbuf_peek(ringbuf_t *r);
 void		 ringbuf_skip(ringbuf_t *r, unsigned int n);
 unsigned char	 ringbuf_read_byte(ringbuf_t *r);
 unsigned long	 ringbuf_read_long(ringbuf_t *r);
-unsigned long	 ringbuf_read_float(ringbuf_t *r);
+float	         ringbuf_read_float(ringbuf_t *r);
 void		 ringbuf_free(ringbuf_t *r);
+void             ringbuf_print(ringbuf_t *r);
 
 #endif

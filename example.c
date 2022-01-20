@@ -51,8 +51,12 @@ int main(int argc, char *argv[]) {
   rocket->time = 0;
   gettimeofday(&t0, NULL);
 
-  mrocket_track_t *track1 = minirocket_create_track(rocket, "mygroup:mytrack");
+  mrocket_track_t *track1 = minirocket_create_track(rocket, "group1:track1");
+  mrocket_track_t *track2 = minirocket_create_track(rocket, "group1:track2");
   assert(track1 != NULL);
+  assert(track2 != NULL);
+  assert(track1 != track2);
+  assert(rocket->numtracks == 2);
 
   while(1) {
     gettimeofday(&t1, NULL);
@@ -62,7 +66,7 @@ int main(int argc, char *argv[]) {
     if(isfinite(delta_time)) {
       rocket->time += delta_time;
       if(minirocket_tick(rocket)) {
-	float t1val = mrocket_get_value(track1);
+	float t1val = minirocket_get_value(track1);
 	fprintf(stderr, "EXAMPLE: delta_time=%f  rocket->time=%f   value=%f\n", delta_time, rocket->time, t1val); fflush(stderr);
       }
       prev_time = current_time;

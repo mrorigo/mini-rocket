@@ -2,6 +2,11 @@
 #define __MINIROCKET_H__
 
 #include <stdbool.h>
+#if defined(_WIN32)
+#include <winsock2.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "ringbuf.h"
 
@@ -38,6 +43,7 @@ typedef struct __mrocket_t {
 #ifndef MR_NO_NETWORK
   int		  sock;
   int		  handshake;
+  fd_set          fds;
   ringbuf_t	  *buf;
 #endif
 } mrocket_t;
@@ -46,6 +52,8 @@ typedef struct __mrocket_t {
 #ifndef MR_NO_NETWORK
 mrocket_t		*minirocket_connect(const char *hostname, int port);
 void			 minirocket_disconnect(mrocket_t *r);
+void                     minirocket_socket_send_set_row(mrocket_t *rocket, unsigned int row);
+void                     minirocket_socket_send_pause(mrocket_t *rocket, unsigned int pause);
 #endif
 unsigned int		 minirocket_time2row(mrocket_t *r,   float time);
 float			 minirocket_row2time(mrocket_t *r,   unsigned long row);
@@ -53,5 +61,6 @@ mrocket_t *		 minirocket_read_from_file(const char *filename);
 bool			 minirocket_write_to_file(mrocket_t *r, const char *filename);
 bool			 minirocket_tick(mrocket_t *rocket);
 mrocket_track_t *	 minirocket_create_track(mrocket_t *rocket, const char *name);
-float			 mrocket_get_value(mrocket_track_t *track);
+float			 minirocket_get_value(mrocket_track_t *track);
+void                     minirocket_dump_to_file(mrocket_t *rocket, FILE *fd);
 #endif
