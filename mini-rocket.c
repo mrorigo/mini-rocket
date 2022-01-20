@@ -43,7 +43,7 @@ unsigned int minirocket_time2row(mrocket_t *rocket, float time)
   return (unsigned int)(floor(minirocket_time2rowf(rocket, time)));
 }
 
-mrocket_t *mrocket_init() {
+static mrocket_t *mrocket_init() {
   mrocket_t *r = malloc(sizeof(mrocket_t));
   if(r == NULL) {
     return NULL;
@@ -412,7 +412,7 @@ bool minirocket_tick(mrocket_t *rocket) {
   }
   else if(rocket->handshake == 0) {
     rocket->handshake = -1;
-    fprintf(stderr, "minirocket: Handshake done~\n"); fflush(stderr);
+    // fprintf(stderr, "minirocket: Handshake done~\n"); fflush(stderr);
   }
 
   if(ringbuf_size(buf) > 1) {
@@ -451,12 +451,12 @@ bool minirocket_tick(mrocket_t *rocket) {
     }
     else if(peek == CMD_SAVE_TRACKS) {
       ringbuf_skip(buf, 1);
-      fprintf(stderr, "saving to file demo.rkt!\n"); fflush(stderr);
+      fprintf(stderr, "minirocket: saving to file 'demo.rkt'!\n"); fflush(stderr);
       minirocket_write_to_file(rocket, "demo.rkt");
-      fprintf(stderr, "saved to file!\n"); fflush(stderr);
+      fprintf(stderr, "minirocket: saved to file!\n"); fflush(stderr);
     }
     else {
-      fprintf(stderr, "protocol error: %d\n", peek); fflush(stderr);
+      fprintf(stderr, "minirocket: protocol error: %d\n", peek); fflush(stderr);
       ringbuf_skip(buf, 1);
     }
   }

@@ -1,5 +1,6 @@
 //#define MR_NO_NETWORK
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>

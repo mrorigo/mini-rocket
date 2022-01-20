@@ -18,7 +18,7 @@ typedef struct __ringbuf_t {
 #endif
 
 #ifdef RINGBUF_IMPLEMENTATION
-ringbuf_t *ringbuf_create(unsigned int max) {
+static ringbuf_t *ringbuf_create(unsigned int max) {
   ringbuf_t *r = malloc(sizeof(ringbuf_t));
   memset(r, 0, sizeof(ringbuf_t));
   r->buf = malloc(max);
@@ -27,11 +27,11 @@ ringbuf_t *ringbuf_create(unsigned int max) {
   return r;
 }
 
-void ringbuf_reset(ringbuf_t *r) {
+static inline void ringbuf_reset(ringbuf_t *r) {
   r->read = r->write = 0;
 }
 
-unsigned int ringbuf_size(ringbuf_t *r) {
+static inline unsigned int ringbuf_size(ringbuf_t *r) {
   if(r->write < r->read) {
     return r->max - r->read + r->write;
   } else {
@@ -102,9 +102,9 @@ void ringbuf_free(ringbuf_t *r) {
 }
 
 #else
-ringbuf_t	*ringbuf_create(unsigned int max);
-void		 ringbuf_reset(ringbuf_t *r);
-unsigned int	 ringbuf_size(ringbuf_t *r);
+static ringbuf_t	*ringbuf_create(unsigned int max);
+static void		 ringbuf_reset(ringbuf_t *r);
+static unsigned int	 ringbuf_size(ringbuf_t *r);
 void		 ringbuf_write_byte(ringbuf_t *r, unsigned char c);
 void		 ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size);
 unsigned char	 ringbuf_peek(ringbuf_t *r);
