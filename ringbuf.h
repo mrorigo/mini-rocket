@@ -28,18 +28,7 @@ static ringbuf_t *ringbuf_create(unsigned int max) {
   return r;
 }
 
-static inline void ringbuf_reset(ringbuf_t *r) {
-  r->read = r->write = 0;
-}
-
-static inline unsigned int ringbuf_size(ringbuf_t *r) {
-  if(r->write < r->read) {
-    return r->max - r->read + r->write;
-  } else {
-    return r->write - r->read;
-  }
-
-  void ringbuf_print(ringbuf_t *r) {
+void ringbuf_print(ringbuf_t *r) {
   fprintf(stderr, "\n");
   for(unsigned int i=0; i < r->max; i++) {
     fprintf(stderr, "%02x|", r->buf[i]);
@@ -69,7 +58,6 @@ void ringbuf_reset(ringbuf_t *r) {
 
 unsigned int ringbuf_size(ringbuf_t *r) {
   return r->size;
->>>>>>> a700a0f7193850c0b30e256922f16c846a5f0670
 }
 
 void ringbuf_write_byte(ringbuf_t *r, unsigned char c) {

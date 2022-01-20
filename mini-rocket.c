@@ -509,12 +509,8 @@ bool minirocket_tick(mrocket_t *rocket) {
       fprintf(stderr, "minirocket: saved to file!\n"); fflush(stderr);
     }
     else {
-<<<<<<< HEAD
       fprintf(stderr, "minirocket: protocol error: %d\n", peek); fflush(stderr);
-=======
-      fprintf(stderr, "protocol error: %d\n", peek); fflush(stderr);
       ringbuf_print(buf);
->>>>>>> a700a0f7193850c0b30e256922f16c846a5f0670
       ringbuf_skip(buf, 1);
     }
   }
