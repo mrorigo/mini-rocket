@@ -236,6 +236,7 @@ mrocket_t *minirocket_read_from_file(const char *filename)
   char buf[512];
   mrocket_track_t *track = NULL;
   while((fgets(buf, 512, fd) != NULL)) {
+    buf[strlen(buf)-1]=0; // trim newline
     if(buf[0] == '#') { // track name
       track = malloc(sizeof(mrocket_track_t));
       memset(track, 0, sizeof(mrocket_track_t));
@@ -243,7 +244,7 @@ mrocket_t *minirocket_read_from_file(const char *filename)
       track->numkeys = 0;
       track->id = rocket->numtracks;
       track->name = strdup(buf+1);
-      track->name[strlen(track->name)-1] = 0;
+      //      track->name[strlen(track->name)-1] = 0;
       rocket->tracks[rocket->numtracks++] = track;
     }
     else {
@@ -251,15 +252,11 @@ mrocket_t *minirocket_read_from_file(const char *filename)
 
       char *b = buf;
       mrocket_key_t *key = &track->keys[track->numkeys++];
-      while(isalnum(*b++)) {} *(b-1)=0;
-      char *vb = b;
       key->row = atol(buf);
-      while(isalnum(*b++)) {} *(b-1)=0;
-      key->value = (float)atof(vb);
-      vb = b;
-      while(isalnum(*b++)) {} *(b-1)=0;
-      key->interp = (unsigned char)b[0]-'0';
+      while(isalnum(*b++)) {}
 
+      key->value = (float)atof(b);
+      key->interp = (unsigned char)b[strlen(b)-1]-'0';
       _minirocket_sort_keys(track);
     }
   }
