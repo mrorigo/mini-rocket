@@ -8,7 +8,9 @@
 #include <unistd.h>
 #endif
 
+#ifndef MR_NO_NETWORK
 #include "ringbuf.h"
+#endif
 
 #define MR_MAX_TRACKS 64
 #define MR_MAX_KEYS 256

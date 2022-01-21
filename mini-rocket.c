@@ -17,11 +17,8 @@
 #include <netdb.h>
 #endif
 
-#include "mini-rocket.h"
-#ifndef MR_NO_NETWORK
 #define RINGBUF_IMPLEMENTATION
-#include "ringbuf.h"
-#endif
+#include "mini-rocket.h"
 
 void minirocket_dump_to_file(mrocket_t *rocket, FILE *fd)
 {
