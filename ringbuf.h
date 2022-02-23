@@ -56,17 +56,17 @@ void ringbuf_reset(ringbuf_t *r) {
   r->read = r->write = 0;
 }
 
-unsigned int ringbuf_size(ringbuf_t *r) {
+inline unsigned int ringbuf_size(ringbuf_t *r) {
   return r->size;
 }
 
-void ringbuf_write_byte(ringbuf_t *r, unsigned char c) {
+inline void ringbuf_write_byte(ringbuf_t *r, unsigned char c) {
   r->buf[r->write] = c;
   r->write = (r->write + 1) % r->max;
   r->size++;
 }
 
-void ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size) {
+inline void ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size) {
   unsigned int i = 0;
   assert(size <= r->max - ringbuf_size(r));
   while(size-- > 0) {
@@ -74,11 +74,11 @@ void ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size) {
   }
 }
 
-unsigned char ringbuf_peek(ringbuf_t *r) {
+inline unsigned char ringbuf_peek(ringbuf_t *r) {
   return r->buf[r->read];
 }
 
-void ringbuf_skip(ringbuf_t *r, unsigned int n) {
+inline void ringbuf_skip(ringbuf_t *r, unsigned int n) {
   for(int i = 0; i < n; i++) {
     r->buf[(r->read + i) % r->max] = 0x42;
   }
@@ -87,7 +87,7 @@ void ringbuf_skip(ringbuf_t *r, unsigned int n) {
   assert(r->size >= 0);
 }
 
-unsigned char ringbuf_read_byte(ringbuf_t *r) {
+inline unsigned char ringbuf_read_byte(ringbuf_t *r)  {
   assert(ringbuf_size(r) >= 1);
   unsigned char ret = r->buf[r->read];
   ringbuf_skip(r, 1);
@@ -113,7 +113,7 @@ float ringbuf_read_float(ringbuf_t *r) {
   return value;
 }
 
-void ringbuf_read(ringbuf_t *r, unsigned char *buf, unsigned int size) {
+inline void ringbuf_read(ringbuf_t *r, unsigned char *buf, unsigned int size) {
   unsigned int i = 0;
   assert(size <= ringbuf_size(r));
   while(size-- > 0) {
@@ -123,13 +123,13 @@ void ringbuf_read(ringbuf_t *r, unsigned char *buf, unsigned int size) {
 
 #else
 ringbuf_t	*ringbuf_create(unsigned int max);
-void		 ringbuf_reset(ringbuf_t *r);
-unsigned int	 ringbuf_size(ringbuf_t *r);
-void		 ringbuf_write_byte(ringbuf_t *r, unsigned char c);
-void		 ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size);
-unsigned char	 ringbuf_peek(ringbuf_t *r);
-void		 ringbuf_skip(ringbuf_t *r, unsigned int n);
-unsigned char	 ringbuf_read_byte(ringbuf_t *r);
+inline void		 ringbuf_reset(ringbuf_t *r);
+inline unsigned int	 ringbuf_size(ringbuf_t *r);
+inline void		 ringbuf_write_byte(ringbuf_t *r, unsigned char c);
+inline void		 ringbuf_write(ringbuf_t *r, unsigned char *buf, unsigned int size);
+inline unsigned char	 ringbuf_peek(ringbuf_t *r);
+inline void		 ringbuf_skip(ringbuf_t *r, unsigned int n);
+inline unsigned char	 ringbuf_read_byte(ringbuf_t *r);
 unsigned long	 ringbuf_read_long(ringbuf_t *r);
 float	         ringbuf_read_float(ringbuf_t *r);
 void		 ringbuf_free(ringbuf_t *r);
